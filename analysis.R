@@ -1,0 +1,129 @@
+library(dplyr)
+library(leaflet)
+library(ggplot2)
+library(lintr)
+library(ggmap)
+shootings <- read.csv("data/shootings-2018.csv", stringsAsFactors = FALSE)
+#number of shootings recorded
+num_shootings <- nrow(shootings)
+#number of people who died in shootings
+num_died <- sum(shootings$num_killed)
+#sum of those who died and were injured for every shooting recorded in data set
+shootings <- mutate(shootings, total = num_injured + num_killed)
+#function for finding amount of people and killed per city
+impact_on_cities <- function(df, city, total) {
+  ks <- df %>%
+    select(city, total) %>%
+    group_by(city) %>%
+    summarise(total_people_injured_and_killed = sum(total))
+  return(ks)
+}
+#city with the most amount of injuries and killings
+most_impacted_city <- impact_on_cities(shootings,
+                                       shootings$city, shootings$total) %>%
+  filter(total_people_injured_and_killed ==
+           max(total_people_injured_and_killed))
+#function for calculating amount of people killed per month
+impact_on_months <- function(df, date, total) {
+ impact_on_months <- df %>%
+  select(date, total) %>%
+    mutate(date = sub(",", "", date)) %>%
+    mutate(month_of_shooting = months(as.Date(date, format = "%B %d %Y"))) %>%
+    group_by(month_of_shooting) %>%
+    summarise(total_injured_and_killed = sum(total))
+    return(impact_on_months)
+}
+#month with most amount of killings and injuries
+most_impacted_month <- impact_on_months(shootings,
+                                        shootings$date, shootings$total) %>%
+  filter(total_injured_and_killed == max(total_injured_and_killed))
+#function to calculate amount of injured and killed per  state
+impact_on_states <- function(df, state, total) {
+  impact_on_states <- shootings %>%
+  select(state, total) %>%
+  group_by(state) %>%
+  summarise(total = sum(total))
+  return(impact_on_states)
+}
+#state with most amount of injured and killed
+most_impacted_state <- impact_on_states(shootings,
+                                        shootings$state, shootings$total) %>%
+  filter(total == max(total))
+
+#total number of injuries and killing per city
+total_per_city <-  impact_on_cities(shootings, shootings$city, shootings$total)
+#calculates number of people injured per city and month.
+city_injured_summary <- shootings %>%
+  select(city, num_injured, date) %>%
+  mutate(date = sub(",", "", date)) %>%
+  mutate(month = months(as.Date(date, format = "%B %d %Y"))) %>%
+  group_by(city, month) %>%
+  summarise(num_injured = sum(num_injured))
+#calculates number of people killed per city and month
+city_killed_summary <- shootings %>%
+  select(city, num_killed, date) %>%
+  mutate(date = sub(",", "", date)) %>%
+  mutate(month = months(as.Date(date, format = "%B %d %Y"))) %>%
+  group_by(city, month) %>%
+  summarise(num_killed = sum(num_killed))
+#summary table describing amount of people killed, injured,
+#and the two combined for every month and city.
+summary_stuff <- merge(city_injured_summary, city_killed_summary) %>%
+  mutate(total_injured_and_killed = num_injured + num_killed)
+#particular shooting incident info
+parkland_shooting <- shootings %>%
+  filter(total == max(total))
+#data plot by month
+make_plot <- function(df, date, total_injured_and_killed) {
+  plot <- df %>%
+    select(date, total) %>%
+    mutate(date = sub(",", "", date)) %>%
+    mutate(month_of_shooting = months(as.Date(date, format = "%B %d %Y"))) %>%
+    group_by(month_of_shooting) %>%
+    summarise(total_injured_and_killed = sum(total))
+  ggplot(data = plot) +
+    geom_col(mapping = aes(x = month_of_shooting,
+                           y = total_injured_and_killed), fill = "green")
+}
+bar_chart <- make_plot(shootings, shootings$date, shootings$total)
+
+#interactive map
+key <- "AIzaSyBzkEdiZcBDb8qbE2IqqhwJ1wEPtPJ_5uE"
+register_google(key = key)
+updated_lat_long <- geocode(shootings$address,
+                            output = "latlona", source = "google")
+shootings_updated <- shootings %>%
+  mutate(lat = updated_lat_long$lat) %>%
+mutate(long = updated_lat_long$lon)
+for (i in 1:nrow(shootings_updated)) {
+  if (is.na(shootings_updated$lat[i])) {
+    shootings_updated$lat[i] <- shootings$lat[i]
+    shootings_updated$long[i] <- shootings$long[i]
+  }
+
+}
+interactive_map_maker <- function(df, lat,
+                                  long, total, num_injured, num_killed) {
+  leaflet(data = df) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(lng = -96.4247, lat = 35.51073, zoom = 2) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lat = lat,
+    lng = long,
+    radius = total,
+    stroke = TRUE,
+    popup = paste("In this shooting", num_injured,
+                  "person(s) were injured. <br>", num_killed,
+                  "person(s) were killed.<br>", total,
+                  "people were injured or killed."
+                  )
+  )
+}
+
+interactive_map <- interactive_map_maker(shootings_updated,
+                                         shootings_updated$lat,
+                                         shootings_updated$long,
+                                         shootings_updated$total,
+                                         shootings_updated$num_injured,
+                                         shootings_updated$num_killed)

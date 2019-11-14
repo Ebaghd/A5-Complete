@@ -1,0 +1,30 @@
+---
+output : html_document
+---
+```{r summary, include = FALSE}
+source("analysis.R")
+library("knitr")
+library("leaflet")
+library("ggplot2")
+library("dplyr")
+```
+# Shootings In US Data Report
+## Summary Information
+The amount of shootings recorded in this data set is `r num_shootings`. The total number of lives lost across these shootings is `r num_died`. The city that was most impacted by shootings was `r most_impacted_city$city`. The definition of "most impacted" means the total number of those who were killed or injured by the shooting. In `r  most_impacted_city$city`, `r most_impacted_city$total_people_injured_and_killed` people died. The month that was the most impacted by shootings was `r most_impacted_month$month_of_shooting`. `r most_impacted_month$total_injured_and_killed` people were either killed or injured during `r most_impacted_month$month_of_shooting`. The state most impacted by shootings was `r most_impacted_state$state`.`r most_impacted_state$total` people were either killed or injured by shootings in `r most_impacted_state$state`.
+
+## Summary Table 
+`r kable(summary_stuff)`
+
+## Parkland Shooting
+On `r parkland_shooting$date`, a gunman armed with a semi-automatic weapon opened fire at Marjory Stoneman Douglas High School in `r parkland_shooting$city`, `r parkland_shooting$state`. `r parkland_shooting$num_killed` people died and `r parkland_shooting$num_injured` were injured - this is the deadliest shooting recorded in this data set, as well as the deadliest shooting at a high school in the US. The shooter was Nikolas Cruz, a 19-year-old former student. He fled the scene by blending with other students and was arrested around an hour later in Coral Springs. He confessed to being the shooter - he was charged with 17 counts of premeditated murder and 17 counts of attempted murder. [Here is a source for more information about this shooting.](https://www.cnn.com/2018/02/14/us/florida-high-school-shooting/index.html)
+
+## Interactive Map
+`r interactive_map`
+
+## Bar Chart(Month vs. Number of People Killed/Injured) 
+```{r echo = FALSE}
+  plot(bar_chart)
+```
+
+## Critical Reflection
+Data related to mass shootings can be used for good as well as harm. For example, an area with a high amount of recorded shootings will repel normal law-abiding citizens, leaving only those impoverished citizens as well as criminals. These areas generally have higher poverty levels. More cops will patrol these areas with high numbers of shootings, and this can lead to targeting of impoverished neighborhoods, leading to more arrests for petty crime. More innocent people will be stopped in these areas and more police harassment will occur. This is a harmful feedback loop that leads to the decline of an area and community. 
